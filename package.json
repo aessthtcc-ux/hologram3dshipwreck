@@ -1,0 +1,15 @@
+{
+  "name": "webar-shipwreck",
+  "version": "1.0.0",
+  "description": "Scan marker → kamera terbuka → model 3D muncul melayang di atas marker di dunia nyata. Tidak perlu install app — jalan langsung di browser HP.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mind-ar": "^1.2.5"
+  }
+}

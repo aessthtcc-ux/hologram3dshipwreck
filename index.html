@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebAR Shipwreck Viewer</title>
+
+  <!-- MindAR + A-Frame -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; font-family: sans-serif; }
+
+    /* Loading / splash screen shown before AR starts */
+    #splash {
+      position: fixed; inset: 0; z-index: 999;
+      background: #050810;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 24px; color: #fff;
+      transition: opacity 0.5s ease;
+    }
+    #splash.hide { opacity: 0; pointer-events: none; }
+
+    #splash h1 {
+      font-size: 26px; font-weight: 700; letter-spacing: 0.06em;
+      color: #5ee7ff;
+    }
+    #splash p {
+      font-size: 14px; color: #8aa;
+      text-align: center; max-width: 300px; line-height: 1.6;
+    }
+
+    #start-btn {
+      padding: 14px 36px;
+      background: #5ee7ff; color: #050810;
+      border: none; border-radius: 10px;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.04em;
+    }
+
+    /* Marker hint panel — slides in when a marker is detected */
+    #hint-bar {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: rgba(5,8,16,0.85);
+      border: 1px solid #5ee7ff44;
+      border-radius: 12px;
+      padding: 10px 20px;
+      color: #5ee7ff; font-size: 13px;
+      backdrop-filter: blur(8px);
+      transition: transform 0.35s ease;
+      z-index: 100; pointer-events: none;
+      white-space: nowrap;
+    }
+    #hint-bar.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Marker guide overlay */
+    #marker-guide {
+      position: fixed; top: 20px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(5,8,16,0.7);
+      border: 1px solid #ffffff22;
+      border-radius: 10px;
+      padding: 8px 16px;
+      color: #aac; font-size: 12px;
+      text-align: center;
+      z-index: 100; pointer-events: none;
+      display: none;
+    }
+    #marker-guide.show { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ── SPLASH ─────────────────────────────────────── -->
+<div id="splash">
+  <h1>⚓ WebAR Viewer</h1>
+  <p>Point your camera at one of the printed markers to see a 3D model appear in the real world.</p>
+  <button id="start-btn" onclick="startAR()">Open Camera</button>
+  <p style="font-size:12px;color:#556">Requires camera permission</p>
+</div>
+
+<div id="hint-bar">🎯 Marker detected — hold camera steady</div>
+<div id="marker-guide" class="show">Scan a marker to start</div>
+
+<!-- ── A-FRAME SCENE ──────────────────────────────── -->
+<!--
+  mindar-image:
+    imageTargetSrc  = compiled .mind file (contains ALL markers)
+    autoStart       = false (we trigger it from JS after button click)
+    uiScanning      = no (we have our own UI)
+    filterMinCF / filterBeta = smoothing for jitter-free tracking
+-->
+<a-scene
+  id="ar-scene"
+  mindar-image="
+    imageTargetSrc: /mind/targets.mind;
+    autoStart: false;
+    uiScanning: no;
+    filterMinCF: 0.001;
+    filterBeta: 0.01;
+  "
+  color-space="sRGB"
+  renderer="colorManagement: true; physicallyCorrectLights: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+>
+
+  <!-- Camera -->
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+  <!-- ── ASSETS: preload all GLB models here ────────
+       Replace the src paths with your actual GLB filenames.
+       Add more <a-asset-item> lines if you have more models. -->
+  <a-assets>
+    <a-asset-item id="model-shipwreck" src="/models/OBJ_Mesh_Poso.glb"></a-asset-item>
+    <a-asset-item id="model-submarine" src="/models/OBJ_Mesh_Tabularasa.glb"></a-asset-item>
+  </a-assets>
+
+  <!-- ── LIGHTS ──────────────────────────────────── -->
+  <a-light type="ambient"     color="#ffffff" intensity="0.6"></a-light>
+  <a-light type="directional" color="#ffffff" intensity="1.2"
+           position="1 2 1"></a-light>
+  <a-light type="point"       color="#5ee7ff" intensity="0.4"
+           position="-1 1 0"></a-light>
+
+  <!-- ──────────────────────────────────────────────
+    MARKER 0 → shipwreck.glb
+    targetIndex matches the ORDER images were compiled
+    into targets.mind (0 = first image passed to compiler)
+
+    Tune position/rotation/scale here after testing:
+      position="0 0 0"    — offset from marker center (meters)
+      rotation="-90 0 0"  — fix model orientation if it appears sideways
+      scale="0.1 0.1 0.1" — shrink if model is too large
+  ────────────────────────────────────────────────── -->
+  <a-entity mindar-image-target="targetIndex: 0"
+            id="target-0">
+    <a-entity
+      gltf-model="#model-shipwreck"
+      position="0 0.05 0"
+      rotation="-90 0 0"
+      scale="0.08 0.08 0.08"
+      animation="property: rotation;
+                 from: -90 0 0;
+                 to: -90 360 0;
+                 loop: true;
+                 dur: 8000;
+                 easing: linear"
+    ></a-entity>
+  </a-entity>
+
+  <!-- MARKER 1 → submarine.glb -->
+  <a-entity mindar-image-target="targetIndex: 1"
+            id="target-1">
+    <a-entity
+      gltf-model="#model-submarine"
+      position="0 0.05 0"
+      rotation="-90 0 0"
+      scale="0.08 0.08 0.08"
+      animation="property: rotation;
+                 from: -90 0 0;
+                 to: -90 360 0;
+                 loop: true;
+                 dur: 8000;
+                 easing: linear"
+    ></a-entity>
+  </a-entity>
+
+
+</a-scene>
+
+<script>
+  const hintBar = document.getElementById("hint-bar");
+  const markerGuide = document.getElementById("marker-guide");
+  let hintTimeout;
+
+  function startAR() {
+    const splash = document.getElementById("splash");
+    splash.classList.add("hide");
+
+    // Start MindAR tracking
+    const scene = document.querySelector("a-scene");
+    scene.addEventListener("loaded", () => {
+      const arSystem = scene.systems["mindar-image-system"];
+      arSystem?.start();
+    });
+
+    // Show scanning hint after a moment
+    setTimeout(() => markerGuide.classList.add("show"), 800);
+  }
+
+  // Show hint bar when any marker is found, hide when lost
+  const NUM_TARGETS = 3;
+  for (let i = 0; i < NUM_TARGETS; i++) {
+    const el = document.getElementById(`target-${i}`);
+    if (!el) continue;
+
+    el.addEventListener("targetFound", () => {
+      clearTimeout(hintTimeout);
+      hintBar.classList.add("show");
+      markerGuide.classList.remove("show");
+    });
+
+    el.addEventListener("targetLost", () => {
+      hintTimeout = setTimeout(() => {
+        hintBar.classList.remove("show");
+        markerGuide.classList.add("show");
+      }, 1200);
+    });
+  }
+</script>
+</body>
+</html>
