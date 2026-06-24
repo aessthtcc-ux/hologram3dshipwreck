@@ -117,8 +117,9 @@
        Replace the src paths with your actual GLB filenames.
        Add more <a-asset-item> lines if you have more models. -->
   <a-assets>
-    <a-asset-item id="model-shipwreck" src="/models/OBJ_Mesh_Poso.glb"></a-asset-item>
-    <a-asset-item id="model-submarine" src="/models/OBJ_Mesh_Tabularasa.glb"></a-asset-item>
+    <a-asset-item id="model-shipwreck" src="/models/shipwreck.glb"></a-asset-item>
+    <a-asset-item id="model-submarine" src="/models/submarine.glb"></a-asset-item>
+    <a-asset-item id="model-treasure"  src="/models/treasure.glb"></a-asset-item>
   </a-assets>
 
   <!-- ── LIGHTS ──────────────────────────────────── -->
@@ -171,6 +172,22 @@
     ></a-entity>
   </a-entity>
 
+  <!-- MARKER 2 → treasure.glb -->
+  <a-entity mindar-image-target="targetIndex: 2"
+            id="target-2">
+    <a-entity
+      gltf-model="#model-treasure"
+      position="0 0.05 0"
+      rotation="-90 0 0"
+      scale="0.08 0.08 0.08"
+      animation="property: rotation;
+                 from: -90 0 0;
+                 to: -90 360 0;
+                 loop: true;
+                 dur: 8000;
+                 easing: linear"
+    ></a-entity>
+  </a-entity>
 
 </a-scene>
 
@@ -183,19 +200,31 @@
     const splash = document.getElementById("splash");
     splash.classList.add("hide");
 
-    // Start MindAR tracking
     const scene = document.querySelector("a-scene");
-    scene.addEventListener("loaded", () => {
-      const arSystem = scene.systems["mindar-image-system"];
-      arSystem?.start();
-    });
 
-    // Show scanning hint after a moment
+    // iOS Safari fix: scene may already be loaded before button tap,
+    // so check first and call start() directly if so.
+    function beginTracking() {
+      const arSystem = scene.systems["mindar-image-system"];
+      if (arSystem) {
+        arSystem.start();
+      } else {
+        // fallback: retry after a tick
+        setTimeout(beginTracking, 200);
+      }
+    }
+
+    if (scene.hasLoaded) {
+      beginTracking();
+    } else {
+      scene.addEventListener("loaded", beginTracking, { once: true });
+    }
+
     setTimeout(() => markerGuide.classList.add("show"), 800);
   }
 
   // Show hint bar when any marker is found, hide when lost
-  const NUM_TARGETS = 3;
+  const NUM_TARGETS = 2;
   for (let i = 0; i < NUM_TARGETS; i++) {
     const el = document.getElementById(`target-${i}`);
     if (!el) continue;
